@@ -1,0 +1,3 @@
+timestamp,type_arret,sous_categorie,piece_concernee,duree_minutes,commentaire,operateur
+2025-06-10 23:38:13.747575,panne,Électrique,Moteur principal,10,test,Opérateur
+2025-06-10 23:36:20.501986,panne,Mécanique,,10,,Opérateur
