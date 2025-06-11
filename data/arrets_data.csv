@@ -1,3 +1,5 @@
-timestamp,type_arret,sous_categorie,piece_concernee,duree_minutes,commentaire,operateur
-2025-06-10 23:38:13.747575,panne,Électrique,Moteur principal,10,test,Opérateur
-2025-06-10 23:36:20.501986,panne,Mécanique,,10,,Opérateur
+timestamp,type_arret,sous_categorie,piece_concernee,duree_minutes,commentaire,operateur,urgence,date_saisie
+2025-06-11 16:03:48.763914,arret_prevu,Changement de série,Lame de coupe,10,,ss,Élevé,2025-06-11 16:03:48.769210
+2025-06-11 12:58:31.255356,maintenance_preventive,Kit 500hr,,10,test2,salah,Faible,2025-06-11 12:58:31.257864
+2025-06-10 23:38:13.747575,panne,Électrique,Moteur principal,10,test,Opérateur,,
+2025-06-10 23:36:20.501986,panne,Mécanique,,10,,Opérateur,,

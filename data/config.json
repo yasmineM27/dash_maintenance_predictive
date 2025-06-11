@@ -1,0 +1,8 @@
+{
+  "seuil_vibration_alerte": 2.0,
+  "seuil_vibration_critique": 4.0,
+  "seuil_arret_vibration": 0.1,
+  "duree_min_arret": 2,
+  "auto_detection_enabled": true,
+  "notifications_enabled": true
+}

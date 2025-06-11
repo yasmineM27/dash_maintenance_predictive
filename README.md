@@ -195,3 +195,51 @@ Ce projet est développé pour des fins de démonstration et d'apprentissage de 
 **Dernière mise à jour**: Décembre 2024  
 **Développé avec**: ❤️ et Streamlit
 \`\`\`
+
+
+
+Je vois que vous voulez améliorer la section "Saisie Causes d'Arrêt" de votre dashboard Streamlit en vous basant sur le diagramme de flux que vous avez fourni. Voici les modifications que je propose pour intégrer cette logique de détection automatique et de classification des arrêts :
+
+```typescriptreact project="iot-dashboard-improvements"
+...
+```
+
+## Principales Améliorations Apportées :
+
+### 1. **Détection Automatique Basée sur les Vibrations**
+
+- Analyse des signaux de vibration pour détecter quand la machine s'arrête (vibration ≈ 0)
+- Calcul automatique de la durée des arrêts
+- Identification des transitions marche/arrêt
+
+
+### 2. **Classification Selon le Diagramme**
+
+- 5 types d'arrêts avec codes couleur :
+
+- **Maintenance préventive** (bleu) : Kit 500hr, 1000hr, 2000hr, 4000hr
+- **Arrêt prévu** (cyan) : Changement de série, nettoyage, formation
+- **Arrêt imprévu** (violet) : Panne machine, manque alimentation
+- **Arrêt conducteur** (jaune) : Discussion technique, besoin naturel
+- **Arrêt problème qualité** (rouge) : Défaut produit, réglage qualité
+
+
+
+
+
+### 3. **Interface Améliorée**
+
+- Onglets pour organiser les fonctionnalités
+- Aperçu visuel des types d'arrêts avec couleurs
+- Formulaires de classification pour les arrêts détectés automatiquement
+- Statistiques avancées avec graphiques colorés
+
+
+### 4. **Workflow Automatisé**
+
+- Détection automatique → Classification manuelle → Statistiques
+- Suivi du taux de classification
+- Alertes pour les arrêts non classifiés
+
+
+Cette solution implémente fidèlement le diagramme de flux que vous avez fourni, en automatisant la détection des arrêts tout en permettant une classification manuelle précise selon vos catégories métier
