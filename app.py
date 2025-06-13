@@ -276,19 +276,75 @@ div[role="radiogroup"] > label[data-selected="true"] {
             
 </style>
 """, unsafe_allow_html=True)
+# Fonction pour afficher le logo
+def display_logo():
+    """Affiche le logo de manière robuste"""
+    logo_path = "logoAL2.png"
+
+    if os.path.exists(logo_path):
+        try:
+            # Méthode 1: Utilisation directe de st.image
+            st.image(logo_path, width=150)
+        except Exception as e:
+            try:
+                # Méthode 2: Encodage base64 pour plus de compatibilité
+                with open(logo_path, "rb") as f:
+                    logo_data = f.read()
+                    logo_base64 = base64.b64encode(logo_data).decode()
+                    st.markdown(f"""
+                    <div style="text-align: center;">
+                        <img src="data:image/png;base64,{logo_base64}"
+                             style="height: 80px; margin-bottom: 10px;"
+                             alt="Logo">
+                    </div>
+                    """, unsafe_allow_html=True)
+            except Exception as e2:
+                # Méthode 3: Fallback avec emoji
+                st.markdown("### 🏭 AlgerieTelecom")
+    else:
+        # Fallback si le logo n'existe pas
+        st.markdown("### 🏭 AlgerieTelecom")
 
 # Initialisation des classes utilitaires
 @st.cache_resource
-def init_data_components():
-    data_gen = DataGenerator()
-    data_manager = DataManager()
-    return data_gen, data_manager
+def init_data_manager():
+    return DataManager()
 
-data_generator, data_manager = init_data_components()
+# Initialisation sans cache pour le générateur (pour avoir les nouvelles méthodes)
+data_generator = DataGenerator()
+data_manager = init_data_manager()
+
+import os
+import base64
+import streamlit as st
+
+def display_logo2():
+    """Affiche le logo dans la sidebar uniquement"""
+    logo_path = "logoAL.png"
+
+    if os.path.exists(logo_path):
+        try:
+            with open(logo_path, "rb") as f:
+                logo_data = f.read()
+                logo_base64 = base64.b64encode(logo_data).decode()
+                st.sidebar.markdown(f"""
+                <div style="text-align: center;">
+                    <img src="data:image/png;base64,{logo_base64}"
+                         style="height: 100px; margin-bottom: 10px;"
+                         alt="Logo">
+                </div>
+                """, unsafe_allow_html=True)
+        except:
+            st.sidebar.markdown("### 🏭 AlgerieTelecom")
+    else:
+        st.sidebar.markdown("### 🏭 AlgerieTelecom")
 
 # Sidebar pour navigation
+display_logo2()
 st.sidebar.title("🔧 Dashboard Machine de Coupe")
 st.sidebar.markdown("---")
+
+
 
 # Initialisation du session state pour la page
 if 'page' not in st.session_state:
@@ -309,16 +365,22 @@ if st.sidebar.button("⚙️ Configuration"):
 # Récupère la page actuelle
 page = st.session_state.page
 
-# Génération de données si nécessaire
+# Génération et mise à jour des données
 if not os.path.exists("data/machine_data.csv"):
     with st.spinner("Génération des données initiales..."):
         data_generator.generate_initial_data()
+else:
+    # Mise à jour automatique des données jusqu'au moment présent
+    with st.spinner("Mise à jour des données..."):
+        data_generator.update_to_current_time()
 
 # Chargement des données
 df = data_manager.load_data()
 
 # PAGE 1: SUIVI INSTANTANÉ AMÉLIORÉ
 if page == "📊 Suivi Instantané":
+    display_logo()
+
     # En-tête principal
     st.markdown("""
     <div class="main-header">
@@ -342,9 +404,29 @@ if page == "📊 Suivi Instantané":
     # Données récentes
     cutoff_time = datetime.now() - timedelta(hours=hours_back)
     recent_data = df[pd.to_datetime(df['timestamp']) >= cutoff_time].copy()
-    
+
+    # Debug: affichage des informations sur les données
+    if len(df) > 0:
+        first_timestamp = pd.to_datetime(df['timestamp']).min()
+        last_timestamp = pd.to_datetime(df['timestamp']).max()
+        st.sidebar.markdown(f"""
+        **📊 Informations sur les données:**
+        - Total: {len(df)} enregistrements
+        - Première donnée: {first_timestamp.strftime('%Y-%m-%d %H:%M')}
+        - Dernière donnée: {last_timestamp.strftime('%Y-%m-%d %H:%M')}
+        - Période demandée: {hours_back}h (depuis {cutoff_time.strftime('%Y-%m-%d %H:%M')})
+        - Données trouvées: {len(recent_data)}
+        """)
+
     if len(recent_data) == 0:
-        st.warning("Aucune donnée disponible pour la période sélectionnée")
+        st.warning(f"Aucune donnée disponible pour la période sélectionnée ({hours_back}h)")
+        st.info("💡 Essayez une période plus longue (12h ou 24h) ou actualisez les données")
+
+        # Bouton pour forcer la génération de nouvelles données
+        if st.button("🔄 Générer de nouvelles données"):
+            with st.spinner("Génération de nouvelles données..."):
+                data_generator.generate_additional_data(hours=hours_back + 1)
+                st.rerun()
         st.stop()
     
     # État actuel

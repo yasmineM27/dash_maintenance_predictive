@@ -29,10 +29,10 @@ class DataGenerator:
     
     def generate_state_sequence(self, duration_hours):
         """Génère une séquence d'états réaliste avec transitions logiques"""
-        total_minutes = duration_hours * 60
+        total_minutes = int(duration_hours * 60)  # Conversion en entier
         states = []
         current_state = 'en_marche'
-        
+
         i = 0
         while i < total_minutes:
             # Durée dans l'état actuel (variable selon l'état)
@@ -44,12 +44,12 @@ class DataGenerator:
                 duration = random.randint(10, 45)   # 10min à 45min
             else:  # probleme_qualite
                 duration = random.randint(5, 30)    # 5min à 30min
-            
+
             # Ajout de l'état pour la durée calculée
             for _ in range(min(duration, total_minutes - i)):
                 states.append(current_state)
                 i += 1
-            
+
             # Transition vers le prochain état
             if current_state == 'en_marche':
                 current_state = np.random.choice(
@@ -62,7 +62,7 @@ class DataGenerator:
                 current_state = np.random.choice(['en_marche', 'panne'], p=[0.9, 0.1])
             else:  # probleme_qualite
                 current_state = np.random.choice(['en_marche', 'arret_production'], p=[0.8, 0.2])
-        
+
         return states[:total_minutes]
     
     def generate_data(self, start_time, duration_hours):
@@ -111,17 +111,18 @@ class DataGenerator:
         """Génère les données initiales pour le dashboard"""
         if not os.path.exists('data'):
             os.makedirs('data')
-        
-        # Génération des données des 7 derniers jours
+
+        # Génération des données des 7 derniers jours jusqu'à maintenant
         end_time = datetime.now()
         start_time = end_time - timedelta(days=days)
-        
+
         df = self.generate_data(start_time, days * 24)
-        
+
         # Sauvegarde
         df.to_csv('data/machine_data.csv', index=False)
         print(f"✅ Données initiales générées: {len(df)} enregistrements")
-        
+        print(f"📅 Période: {start_time.strftime('%Y-%m-%d %H:%M')} à {end_time.strftime('%Y-%m-%d %H:%M')}")
+
         return df
     
     def generate_additional_data(self, hours=24):
@@ -133,21 +134,44 @@ class DataGenerator:
         else:
             existing_df = pd.DataFrame()
             last_timestamp = datetime.now() - timedelta(hours=hours)
-        
+
         # Génération des nouvelles données
         start_time = last_timestamp + timedelta(minutes=1)
         new_df = self.generate_data(start_time, hours)
-        
+
         # Fusion et sauvegarde
         if len(existing_df) > 0:
             combined_df = pd.concat([existing_df, new_df], ignore_index=True)
         else:
             combined_df = new_df
-        
+
         combined_df.to_csv('data/machine_data.csv', index=False)
         print(f"✅ {len(new_df)} nouveaux enregistrements ajoutés")
-        
+
         return new_df
+
+    def update_to_current_time(self):
+        """Met à jour les données jusqu'au moment présent"""
+        if not os.path.exists('data/machine_data.csv'):
+            return self.generate_initial_data()
+
+        # Chargement des données existantes
+        existing_df = pd.read_csv('data/machine_data.csv')
+        last_timestamp = pd.to_datetime(existing_df['timestamp'].iloc[-1])
+        current_time = datetime.now()
+
+        # Calcul du temps écoulé depuis la dernière donnée
+        time_diff = current_time - last_timestamp
+        hours_missing = time_diff.total_seconds() / 3600
+
+        # Si plus de 5 minutes d'écart, générer de nouvelles données
+        if hours_missing > 0.083:  # 5 minutes = 0.083 heures
+            # S'assurer qu'on génère au moins 1 heure de données
+            hours_to_generate = max(1.0, hours_missing)
+            print(f"🔄 Mise à jour des données: {hours_missing:.1f}h manquantes, génération de {hours_to_generate:.1f}h")
+            return self.generate_additional_data(hours_to_generate)
+
+        return existing_df
     
     def simulate_anomaly(self, anomaly_type='vibration_spike'):
         """Simule une anomalie spécifique dans les données"""
