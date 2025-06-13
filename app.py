@@ -300,10 +300,10 @@ def display_logo():
                     """, unsafe_allow_html=True)
             except Exception as e2:
                 # Méthode 3: Fallback avec emoji
-                st.markdown("### 🏭 AlgerieTelecom")
+                st.markdown("### Altutex")
     else:
         # Fallback si le logo n'existe pas
-        st.markdown("### 🏭 AlgerieTelecom")
+        st.markdown("### Altutex")
 
 # Initialisation des classes utilitaires
 @st.cache_resource
@@ -335,9 +335,9 @@ def display_logo2():
                 </div>
                 """, unsafe_allow_html=True)
         except:
-            st.sidebar.markdown("### 🏭 AlgerieTelecom")
+            st.sidebar.markdown("### Altutex")
     else:
-        st.sidebar.markdown("### 🏭 AlgerieTelecom")
+        st.sidebar.markdown("### Altutex")
 
 # Sidebar pour navigation
 display_logo2()
