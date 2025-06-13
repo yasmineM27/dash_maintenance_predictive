@@ -1,3 +1,4 @@
+commit 1 
 # Dashboard IoT pour Maintenance Prédictive
 
 ## 🎯 Objectif du Projet
@@ -197,6 +198,7 @@ Ce projet est développé pour des fins de démonstration et d'apprentissage de 
 \`\`\`
 
 
+commit 2
 
 Je vois que vous voulez améliorer la section "Saisie Causes d'Arrêt" de votre dashboard Streamlit en vous basant sur le diagramme de flux que vous avez fourni. Voici les modifications que je propose pour intégrer cette logique de détection automatique et de classification des arrêts :
 
@@ -241,5 +243,43 @@ Je vois que vous voulez améliorer la section "Saisie Causes d'Arrêt" de votre 
 - Suivi du taux de classification
 - Alertes pour les arrêts non classifiés
 
+commit 3 : 
 
 Cette solution implémente fidèlement le diagramme de flux que vous avez fourni, en automatisant la détection des arrêts tout en permettant une classification manuelle précise selon vos catégories métier
+
+
+Les principales améliorations apportées à la page "Suivi Instantané" incluent :
+
+## 🎨 **Améliorations Visuelles**
+
+- **Design moderne** avec gradients et effets de transparence
+- **Cartes métriques** avec couleurs dynamiques selon l'état
+- **Indicateurs animés** pour l'état de la machine
+- **Graphiques avec zones remplies** similaires à l'image de référence
+
+
+## 📊 **Nouvelles Fonctionnalités**
+
+- **Graphique de tendance avancé** avec zones de seuil colorées
+- **Donut chart moderne** pour la répartition des états
+- **Indicateurs de performance** (Efficacité, Disponibilité, OEE)
+- **Score de santé globale** avec indicateurs visuels
+
+
+## 🔧 **Fonctionnalités Techniques**
+
+- **Auto-refresh configurable**
+- **Calcul de vibration totale** avec ligne de tendance
+- **Zones de seuil visuelles** (normale, alerte, critique)
+- **Métriques en temps réel** avec deltas
+
+
+## 🎯 **Éléments Inspirés de l'Image**
+
+- **Cartes métriques colorées** avec gradients
+- **Graphiques avec zones remplies** (area charts)
+- **Design sombre moderne** avec accents colorés
+- **Layout en grille** pour les métriques
+
+
+Cette version transforme votre dashboard en une interface moderne et professionnelle, similaire aux dashboards industriels de pointe montrés dans l'image de référence.

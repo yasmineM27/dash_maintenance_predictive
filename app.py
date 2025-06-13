@@ -209,6 +209,48 @@ st.markdown("""
         border-radius: 10px;
     }
     
+
+/* Style général du titre */
+section[data-testid="stSidebar"] label {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Style du groupe radio */
+div[role="radiogroup"] {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Style de chaque option */
+div[role="radiogroup"] > label {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 10px 15px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Survol */
+div[role="radiogroup"] > label:hover {
+    background-color: rgba(55, 114, 255, 0.15);
+    cursor: pointer;
+}
+
+/* Option sélectionnée */
+div[role="radiogroup"] > label[data-selected="true"] {
+    background-color: #3772FF;
+    color: white;
+    font-weight: bold;
+    border: 1px solid #3772FF;
+}        
+    
     .stButton > button {
         background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
         color: white;
@@ -248,11 +290,24 @@ data_generator, data_manager = init_data_components()
 st.sidebar.title("🔧 Dashboard Machine de Coupe")
 st.sidebar.markdown("---")
 
-# Navigation
-page = st.sidebar.selectbox(
-    "Choisir le mode",
-    ["📊 Suivi Instantané", "📝 Saisie Causes d'Arrêt", "🤖 Détection Automatique", "📈 Historique Machine", "⚙️ Configuration"]
-)
+# Initialisation du session state pour la page
+if 'page' not in st.session_state:
+    st.session_state.page = "📊 Suivi Instantané"
+
+# Boutons de navigation
+if st.sidebar.button("📊 Suivi Instantané"):
+    st.session_state.page = "📊 Suivi Instantané"
+if st.sidebar.button("📝 Saisie Causes d'Arrêt"):
+    st.session_state.page = "📝 Saisie Causes d'Arrêt"
+if st.sidebar.button("🤖 Détection Automatique"):
+    st.session_state.page = "🤖 Détection Automatique"
+if st.sidebar.button("📈 Historique Machine"):
+    st.session_state.page = "📈 Historique Machine"
+if st.sidebar.button("⚙️ Configuration"):
+    st.session_state.page = "⚙️ Configuration"
+
+# Récupère la page actuelle
+page = st.session_state.page
 
 # Génération de données si nécessaire
 if not os.path.exists("data/machine_data.csv"):
@@ -364,176 +419,341 @@ if page == "📊 Suivi Instantané":
         </div>
         """, unsafe_allow_html=True)
     
-    # Alertes avec design amélioré
-    if max_vibration > vibration_threshold:
-        st.markdown(f"""
-        <div class="alert-card alert-danger">
-            <h4>⚠️ ALERTE VIBRATION CRITIQUE!</h4>
-            <p>Vibration détectée: <strong>{max_vibration:.2f} mm/s</strong> (Seuil: {vibration_threshold} mm/s)</p>
-            <p>Action immédiate requise - Vérifier les composants mécaniques</p>
-        </div>
-        """, unsafe_allow_html=True)
-    elif current_state['etat_machine'] == 'panne':
-        st.markdown("""
-        <div class="alert-card alert-danger">
-            <h4>🔴 MACHINE EN PANNE</h4>
-            <p>Intervention technique requise</p>
-            <p>Contactez l'équipe de maintenance</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="alert-card alert-success">
-            <h4>✅ MACHINE OPÉRATIONNELLE</h4>
-            <p>Fonctionnement normal - Tous les paramètres dans les limites</p>
-        </div>
-        """, unsafe_allow_html=True)
     
-    # Graphiques avec design moderne
-    col1, col2 = st.columns([2, 1])
-    
+    # Graphique Timeline des États de la Machine
+    st.markdown("### 🕒 Timeline des États de la Machine")
+
+    # Création du graphique timeline avec barres colorées
+    fig_timeline = go.Figure()
+
+    # Préparation des données pour la timeline
+    timeline_data = recent_data.copy()
+    timeline_data['timestamp_dt'] = pd.to_datetime(timeline_data['timestamp'])
+    timeline_data = timeline_data.sort_values('timestamp_dt').reset_index(drop=True)
+
+    # Couleurs cohérentes pour chaque état
+    state_colors = {
+        'en_marche': '#28a745',        # 🟢 Vert pour "En Marche" (Processing)
+        'panne': '#dc3545',            # 🔴 Rouge pour "Panne" (Error)
+        'arret_production': '#fd7e14', # 🟠 Orange pour "Arrêt Production" (Changeover)
+        'probleme_qualite': '#6c757d'  # ⚪ Gris pour "Problème Qualité" (Idle)
+    }
+
+    # Utilisation d'un graphique en barres horizontales (Gantt-like)
+    if len(timeline_data) > 0:
+        # Grouper les données par état consécutif
+        timeline_data['state_group'] = (timeline_data['etat_machine'] != timeline_data['etat_machine'].shift()).cumsum()
+
+        # Créer les segments pour chaque groupe d'état
+        segments = []
+        for group_id, group_data in timeline_data.groupby('state_group'):
+            start_time = group_data['timestamp_dt'].min()
+            end_time = group_data['timestamp_dt'].max()
+            state = group_data['etat_machine'].iloc[0]
+
+            # Calculer la durée en minutes
+            duration = (end_time - start_time).total_seconds() / 60
+            if duration == 0:  # Si même timestamp, donner une durée minimale
+                duration = 1
+
+            segments.append({
+                'start': start_time,
+                'end': end_time,
+                'state': state,
+                'duration': duration
+            })
+
+        # Créer les barres pour chaque segment
+        for i, segment in enumerate(segments):
+            state = segment['state']
+            start_time = segment['start']
+            end_time = segment['end']
+            duration = segment['duration']
+
+            # Utiliser un scatter avec des marqueurs rectangulaires
+            fig_timeline.add_trace(go.Scatter(
+                x=[start_time, end_time, end_time, start_time, start_time],
+                y=[0, 0, 1, 1, 0],
+                fill='toself',
+                fillcolor=state_colors.get(state, '#6c757d'),
+                line=dict(color='white', width=2),
+                name=status_labels.get(state, state),
+                hovertemplate=(
+                    f'<b>{status_labels.get(state, state)}</b><br>'
+                    f'Début: {start_time.strftime("%H:%M:%S")}<br>'
+                    f'Fin: {end_time.strftime("%H:%M:%S")}<br>'
+                    f'Durée: {duration:.1f} min<br>'
+                    '<extra></extra>'
+                ),
+                showlegend=True if i == 0 or segments[i-1]['state'] != state else False
+            ))
+
+    # Configuration du layout
+    fig_timeline.update_layout(
+        height=150,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white'),
+        xaxis=dict(
+            gridcolor='rgba(255,255,255,0.1)',
+            title="Temps",
+            showgrid=True,
+            type='date'
+        ),
+        yaxis=dict(
+            showgrid=False,
+            showticklabels=False,
+            title="",
+            range=[-0.1, 1.1],
+            fixedrange=True
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5
+        ),
+        margin=dict(l=0, r=0, t=40, b=60),
+        hovermode='closest'
+    )
+
+    # Affichage dans Streamlit
+    st.plotly_chart(fig_timeline, use_container_width=True)
+
+    st.markdown("### 📈 Évolution des Vibrations en Temps Réel")
+
+    # Graphique des vibrations avec style moderne
+    fig_vibrations = go.Figure()
+
+    # Ajout des courbes avec style amélioré
+    fig_vibrations.add_trace(go.Scatter(
+        x=recent_data['timestamp'],
+        y=recent_data['vibration_x'],
+        name='Vibration X',
+        line=dict(color='#ff6b6b', width=3),
+        fill='tonexty' if len(fig_vibrations.data) > 0 else None,
+        fillcolor='rgba(255, 107, 107, 0.1)'
+    ))
+
+    fig_vibrations.add_trace(go.Scatter(
+        x=recent_data['timestamp'],
+        y=recent_data['vibration_y'],
+        name='Vibration Y',
+        line=dict(color='#4ecdc4', width=3),
+        fill='tonexty',
+        fillcolor='rgba(78, 205, 196, 0.1)'
+    ))
+
+    fig_vibrations.add_trace(go.Scatter(
+        x=recent_data['timestamp'],
+        y=recent_data['vibration_z'],
+        name='Vibration Z',
+        line=dict(color='#45b7d1', width=3),
+        fill='tonexty',
+        fillcolor='rgba(69, 183, 209, 0.1)'
+    ))
+
+    # Ligne de seuil
+    fig_vibrations.add_hline(
+        y=vibration_threshold,
+        line_dash="dash",
+        line_color="orange",
+        line_width=2,
+        annotation_text=f"Seuil d'alerte ({vibration_threshold} mm/s)"
+    )
+
+    # Style du graphique
+    fig_vibrations.update_layout(
+        height=400,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white'),
+        xaxis=dict(
+            gridcolor='rgba(255,255,255,0.1)',
+            title="Temps"
+        ),
+        yaxis=dict(
+            gridcolor='rgba(255,255,255,0.1)',
+            title="Vibration (mm/s)"
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+
+    st.plotly_chart(fig_vibrations, use_container_width=True)
+
+    # Graphiques individuels des vibrations en colonnes
+    col1, col2, col3 = st.columns(3)
+
     with col1:
-        st.markdown("### 📈 Évolution des Vibrations en Temps Réel")
-        
-        # Graphique des vibrations avec style moderne
-        fig_vibrations = go.Figure()
-        
-        # Ajout des courbes avec style amélioré
-        fig_vibrations.add_trace(go.Scatter(
-            x=recent_data['timestamp'], 
+        st.markdown("#### 📊 Vibration X")
+        fig_x = go.Figure()
+        fig_x.add_trace(go.Scatter(
+            x=recent_data['timestamp'],
             y=recent_data['vibration_x'],
             name='Vibration X',
             line=dict(color='#ff6b6b', width=3),
-            fill='tonexty' if len(fig_vibrations.data) > 0 else None,
+            fill='tonexty',
             fillcolor='rgba(255, 107, 107, 0.1)'
         ))
-        
-        fig_vibrations.add_trace(go.Scatter(
-            x=recent_data['timestamp'], 
+        fig_x.add_hline(
+            y=vibration_threshold,
+            line_dash="dash",
+            line_color="orange",
+            line_width=2,
+            annotation_text=f"Seuil ({vibration_threshold} mm/s)"
+        )
+        fig_x.update_layout(
+            height=300,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            xaxis=dict(gridcolor='rgba(255,255,255,0.1)', title="Temps"),
+            yaxis=dict(gridcolor='rgba(255,255,255,0.1)', title="Vibration (mm/s)"),
+            showlegend=False,
+            margin=dict(l=0, r=0, t=0, b=0)
+        )
+        st.plotly_chart(fig_x, use_container_width=True)
+
+    with col2:
+        st.markdown("#### 📊 Vibration Y")
+        fig_y = go.Figure()
+        fig_y.add_trace(go.Scatter(
+            x=recent_data['timestamp'],
             y=recent_data['vibration_y'],
             name='Vibration Y',
             line=dict(color='#4ecdc4', width=3),
             fill='tonexty',
             fillcolor='rgba(78, 205, 196, 0.1)'
         ))
-        
-        fig_vibrations.add_trace(go.Scatter(
-            x=recent_data['timestamp'], 
+        fig_y.add_hline(
+            y=vibration_threshold,
+            line_dash="dash",
+            line_color="orange",
+            line_width=2,
+            annotation_text=f"Seuil ({vibration_threshold} mm/s)"
+        )
+        fig_y.update_layout(
+            height=300,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            xaxis=dict(gridcolor='rgba(255,255,255,0.1)', title="Temps"),
+            yaxis=dict(gridcolor='rgba(255,255,255,0.1)', title="Vibration (mm/s)"),
+            showlegend=False,
+            margin=dict(l=0, r=0, t=0, b=0)
+        )
+        st.plotly_chart(fig_y, use_container_width=True)
+
+    with col3:
+        st.markdown("#### 📊 Vibration Z")
+        fig_z = go.Figure()
+        fig_z.add_trace(go.Scatter(
+            x=recent_data['timestamp'],
             y=recent_data['vibration_z'],
             name='Vibration Z',
             line=dict(color='#45b7d1', width=3),
             fill='tonexty',
             fillcolor='rgba(69, 183, 209, 0.1)'
         ))
-        
-        # Ligne de seuil
-        fig_vibrations.add_hline(
-            y=vibration_threshold, 
-            line_dash="dash", 
-            line_color="orange", 
+        fig_z.add_hline(
+            y=vibration_threshold,
+            line_dash="dash",
+            line_color="orange",
             line_width=2,
-            annotation_text=f"Seuil d'alerte ({vibration_threshold} mm/s)"
+            annotation_text=f"Seuil ({vibration_threshold} mm/s)"
         )
-        
-        # Style du graphique
-        fig_vibrations.update_layout(
-            height=400,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='white'),
-            xaxis=dict(
-                gridcolor='rgba(255,255,255,0.1)',
-                title="Temps"
-            ),
-            yaxis=dict(
-                gridcolor='rgba(255,255,255,0.1)',
-                title="Vibration (mm/s)"
-            ),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            )
-        )
-        
-        st.plotly_chart(fig_vibrations, use_container_width=True)
-    
-    with col2:
-        st.markdown("### 📊 Répartition des États")
-        
-        # Calcul du temps dans chaque état
-        state_duration = recent_data.groupby('etat_machine').size()
-        
-        # Graphique circulaire moderne (donut chart)
-        fig_pie = go.Figure(data=[go.Pie(
-            labels=[status_labels.get(state, state) for state in state_duration.index],
-            values=state_duration.values,
-            hole=0.6,
-            marker=dict(
-                colors=['#28a745', '#dc3545', '#007bff', '#ffc107'],
-                line=dict(color="#666666", width=2)
-            ),
-            textinfo='label+percent',
-            textfont=dict(size=12, color="#666666")
-        )])
-        
-        fig_pie.update_layout(
+        fig_z.update_layout(
             height=300,
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color="#666666"),
+            font=dict(color='white'),
+            xaxis=dict(gridcolor='rgba(255,255,255,0.1)', title="Temps"),
+            yaxis=dict(gridcolor='rgba(255,255,255,0.1)', title="Vibration (mm/s)"),
             showlegend=False,
-            annotations=[dict(text='États<br>Machine', x=0.5, y=0.5, font_size=16, showarrow=False, font_color='#666666')]
+            margin=dict(l=0, r=0, t=0, b=0)
         )
-        
-        st.plotly_chart(fig_pie, use_container_width=True)
-        
-        # Statistiques détaillées
-        st.markdown("### 📋 Statistiques Détaillées")
-        
-        total_points = len(recent_data)
-        running_time = len(recent_data[recent_data['etat_machine'] == 'en_marche'])
-        downtime = total_points - running_time
-        avg_vibration = recent_data[['vibration_x', 'vibration_y', 'vibration_z']].mean().mean()
-        
-        # Métriques secondaires
-        st.markdown(f"""
-        <div class="metric-card metric-card-purple">
-            <div class="metric-label">Temps de fonctionnement</div>
-            <div class="metric-value">{(running_time/total_points*100):.1f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-        <div class="metric-card metric-card-purple">
-            <div class="metric-label">Temps d'arrêt</div>
-            <div class="metric-value">{(downtime/total_points*100):.1f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-        <div class="metric-card metric-card-purple">
-            <div class="metric-label">Vibration moyenne</div>
-            <div class="metric-value">{avg_vibration:.2f}</div>
-            <div class="metric-delta">mm/s</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
+        st.plotly_chart(fig_z, use_container_width=True)
+
+    st.markdown("### 📊 Répartition des États")
+
+    # Calcul du temps dans chaque état
+    state_duration = recent_data.groupby('etat_machine').size()
+
+    # Graphique circulaire moderne (donut chart)
+    fig_pie = go.Figure(data=[go.Pie(
+        labels=[status_labels.get(state, state) for state in state_duration.index],
+        values=state_duration.values,
+        hole=0.6,
+        marker=dict(
+            colors=['#28a745', '#dc3545', '#007bff', '#ffc107'],
+            line=dict(color="#666666", width=2)
+        ),
+        textinfo='label+percent',
+        textfont=dict(size=12, color="#666666")
+    )])
+
+    fig_pie.update_layout(
+        height=300,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color="#666666"),
+        showlegend=False,
+        annotations=[dict(text='États<br>Machine', x=0.5, y=0.5, font_size=16, showarrow=False, font_color='#666666')]
+    )
+
+    st.plotly_chart(fig_pie, use_container_width=True)
+
+    # Statistiques détaillées
+    st.markdown("### 📋 Statistiques Détaillées")
+
+    total_points = len(recent_data)
+    running_time = len(recent_data[recent_data['etat_machine'] == 'en_marche'])
+    downtime = total_points - running_time
+    avg_vibration = recent_data[['vibration_x', 'vibration_y', 'vibration_z']].mean().mean()
+
+    # Métriques secondaires
+    st.markdown(f"""
+    <div class="metric-card metric-card-purple">
+        <div class="metric-label">Temps de fonctionnement</div>
+        <div class="metric-value">{(running_time/total_points*100):.1f}%</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="metric-card metric-card-purple">
+        <div class="metric-label">Temps d'arrêt</div>
+        <div class="metric-value">{(downtime/total_points*100):.1f}%</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="metric-card metric-card-purple">
+        <div class="metric-label">Vibration moyenne</div>
+        <div class="metric-value">{avg_vibration:.2f}</div>
+        <div class="metric-delta">mm/s</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Graphique de tendance avancé
     st.markdown("### 📈 Analyse de Tendance Avancée")
-    
+
     # Calcul de la vibration totale
     recent_data['vibration_totale'] = np.sqrt(
-        recent_data['vibration_x']**2 + 
-        recent_data['vibration_y']**2 + 
+        recent_data['vibration_x']**2 +
+        recent_data['vibration_y']**2 +
         recent_data['vibration_z']**2
     )
-    
+
     # Graphique combiné avec zone remplie
     fig_trend = go.Figure()
-    
+
     # Zone de vibration totale
     fig_trend.add_trace(go.Scatter(
         x=recent_data['timestamp'],
@@ -544,12 +764,12 @@ if page == "📊 Suivi Instantané":
         name='Vibration Totale',
         hovertemplate='<b>Vibration Totale</b><br>%{y:.2f} mm/s<br>%{x}<extra></extra>'
     ))
-    
+
     # Ligne de tendance
     z = np.polyfit(range(len(recent_data)), recent_data['vibration_totale'], 1)
     p = np.poly1d(z)
     trend_line = p(range(len(recent_data)))
-    
+
     fig_trend.add_trace(go.Scatter(
         x=recent_data['timestamp'],
         y=trend_line,
@@ -557,7 +777,7 @@ if page == "📊 Suivi Instantané":
         name='Tendance',
         hovertemplate='<b>Tendance</b><br>%{y:.2f} mm/s<extra></extra>'
     ))
-    
+
     # Zones de seuil
     fig_trend.add_hrect(
         y0=0, y1=vibration_threshold,
@@ -565,14 +785,14 @@ if page == "📊 Suivi Instantané":
         layer="below", line_width=0,
         annotation_text="Zone Normale", annotation_position="top left"
     )
-    
+
     fig_trend.add_hrect(
         y0=vibration_threshold, y1=vibration_threshold*2,
         fillcolor="rgba(255, 193, 7, 0.1)",
         layer="below", line_width=0,
         annotation_text="Zone d'Alerte", annotation_position="top left"
     )
-    
+
     fig_trend.update_layout(
         height=400,
         plot_bgcolor='rgba(0,0,0,0)',
@@ -594,38 +814,38 @@ if page == "📊 Suivi Instantané":
             x=1
         )
     )
-    
+
     st.plotly_chart(fig_trend, use_container_width=True)
-    
+
     # Indicateurs de performance en temps réel
     st.markdown("### ⚡ Indicateurs de Performance")
-    
+
     col1, col2, col3, col4, col5 = st.columns(5)
-    
+
     # Calcul des KPIs
     efficiency = (running_time / total_points) * 100
     availability = ((total_points - len(recent_data[recent_data['etat_machine'] == 'panne'])) / total_points) * 100
     quality_rate = ((total_points - len(recent_data[recent_data['etat_machine'] == 'probleme_qualite'])) / total_points) * 100
     oee = (efficiency * availability * quality_rate) / 10000  # OEE approximatif
-    
+
     with col1:
         st.metric("Efficacité", f"{efficiency:.1f}%", f"{efficiency-85:.1f}%")
-    
+
     with col2:
         st.metric("Disponibilité", f"{availability:.1f}%", f"{availability-90:.1f}%")
-    
+
     with col3:
         st.metric("Qualité", f"{quality_rate:.1f}%", f"{quality_rate-95:.1f}%")
-    
+
     with col4:
         st.metric("OEE", f"{oee:.1f}%", f"{oee-75:.1f}%")
-    
+
     with col5:
         # Calcul de la santé globale
         health_score = (efficiency + availability + quality_rate) / 3
         health_color = "🟢" if health_score > 90 else "🟡" if health_score > 75 else "🔴"
         st.metric("Santé Globale", f"{health_color} {health_score:.1f}%")
-    
+
     # Auto-refresh
     if auto_refresh:
         import time
